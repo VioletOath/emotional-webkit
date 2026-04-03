@@ -4,14 +4,16 @@
 
 无需 After Effects，无需 Premiere，一个浏览器就够了。
 
-## 效果预览
+## 在线预览
+
+**https://violetoath.github.io/emotional-webkit/video.html**
 
 项目内含一个完整的示例视频页面 `video.html`，主题为**「输入法还记得你的名字」**——
 
-> 一个关于失恋后手机输入法依然记住那个人名字的情感故事。  
+> 一个关于失恋后手机输入法依然记住那个人名字的情感故事。
 > 包含 5 个场景：暗场开场、手机输入框联想、雨窗独白、笔记本手写、结尾互动。
 
-直接用浏览器打开 `video.html` 即可观看动画效果。
+点击上方链接直接在浏览器中观看动画效果，也可以下载后本地打开 `video.html`。
 
 ## 为什么做这个
 
@@ -38,7 +40,7 @@ emotional-webkit 的思路是：**把网页当画布**。
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/YOUR_USERNAME/emotional-webkit.git
+git clone https://github.com/VioletOath/emotional-webkit.git
 cd emotional-webkit
 
 # 2. 安装依赖
@@ -107,3 +109,8 @@ emotional-webkit/
 ## 许可
 
 [MIT License](LICENSE) - 自由使用、修改、分发。
+
+## 下载
+
+- [GitHub Releases](https://github.com/VioletOath/emotional-webkit/releases) - 下载打包好的 zip 文件
+- [在线预览](https://violetoath.github.io/emotional-webkit/video.html) - 直接在浏览器中查看示例视频效果
