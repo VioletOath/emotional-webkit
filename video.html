@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>输入法还记得你的名字</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;700&family=ZCOOL+XiaoWei&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0f;
+    overflow: hidden;
+    font-family: 'Noto Serif SC', 'ZCOOL XiaoWei', serif;
+  }
+
+  .viewport {
+    width: 1080px;
+    height: 1920px;
+    position: relative;
+    overflow: hidden;
+    transform-origin: top left;
+    background: #0a0a0f;
+  }
+
+  /* ========== SCENE SYSTEM ========== */
+  .scene {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    pointer-events: none;
+  }
+  .scene.active { opacity: 1; pointer-events: auto; }
+
+  /* ========== SCENE 0: BLACK OPENING ========== */
+  #scene0 {
+    background: #050508;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #scene0 .glow-text {
+    font-size: 42px;
+    color: rgba(180, 200, 255, 0);
+    letter-spacing: 8px;
+    text-shadow: 0 0 40px rgba(100, 140, 255, 0.3);
+    transition: color 2s ease, text-shadow 2s ease;
+  }
+  #scene0.active .glow-text {
+    color: rgba(180, 200, 255, 0.8);
+    text-shadow: 0 0 60px rgba(100, 140, 255, 0.5);
+  }
+
+  /* ========== SCENE 1: PHONE SCREEN ========== */
+  #scene1 {
+    background: radial-gradient(ellipse at 50% 30%, #0d1b2a 0%, #070b14 60%, #000000 100%);
+  }
+
+  .phone-glow {
+    position: absolute;
+    width: 500px;
+    height: 900px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(180deg, rgba(30, 60, 120, 0.15) 0%, rgba(15, 25, 50, 0.1) 100%);
+    border-radius: 40px;
+    border: 1px solid rgba(80, 120, 200, 0.1);
+    box-shadow:
+      0 0 100px rgba(60, 100, 200, 0.15),
+      0 0 200px rgba(40, 70, 150, 0.08),
+      inset 0 0 60px rgba(40, 80, 160, 0.05);
+  }
+
+  .phone-screen-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 420px;
+    text-align: center;
+  }
+
+  .input-box {
+    width: 380px;
+    height: 80px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 24px;
+  }
+
+  .cursor-blink {
+    width: 2px;
+    height: 36px;
+    background: rgba(120, 160, 255, 0.9);
+    animation: blink 1s ease infinite;
+    box-shadow: 0 0 8px rgba(120, 160, 255, 0.5);
+  }
+
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
+  .suggestion-list {
+    margin-top: 20px;
+    text-align: left;
+    padding-left: 20px;
+  }
+
+  .suggestion-item {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    margin-bottom: 4px;
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0);
+    font-size: 28px;
+    letter-spacing: 3px;
+    transition: all 0.8s ease;
+  }
+  .suggestion-item.visible {
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .suggestion-item.highlight {
+    color: rgba(180, 210, 255, 1);
+    background: rgba(80, 120, 200, 0.08);
+    text-shadow: 0 0 20px rgba(100, 150, 255, 0.4);
+  }
+
+  .suggestion-item .name-blur {
+    filter: blur(6px);
+    user-select: none;
+  }
+
+  /* ========== SCENE 2: TEXT HOOK ========== */
+  #scene2 {
+    background: radial-gradient(ellipse at 50% 40%, #0f1628 0%, #080c18 50%, #000005 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .text-line {
+    font-size: 52px;
+    color: rgba(220, 230, 255, 0);
+    line-height: 1.8;
+    letter-spacing: 4px;
+    text-align: center;
+    padding: 0 60px;
+    transition: all 1.5s ease;
+    transform: translateY(30px);
+  }
+  .text-line.visible {
+    color: rgba(220, 230, 255, 0.9);
+    transform: translateY(0);
+  }
+  .text-line.accent {
+    font-size: 56px;
+    color: rgba(140, 180, 255, 0);
+    text-shadow: 0 0 40px rgba(100, 150, 255, 0.3);
+  }
+  .text-line.accent.visible {
+    color: rgba(160, 195, 255, 1);
+    text-shadow: 0 0 50px rgba(100, 150, 255, 0.4);
+  }
+  .text-line.small {
+    font-size: 38px;
+    color: rgba(180, 190, 220, 0);
+  }
+  .text-line.small.visible {
+    color: rgba(180, 190, 220, 0.6);
+  }
+
+  /* ========== SCENE 3: RAIN WINDOW ========== */
+  #scene3 {
+    background: linear-gradient(180deg, #0a1520 0%, #0d1a25 30%, #101820 60%, #0a1015 100%);
+  }
+
+  .rain-container {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  .raindrop {
+    position: absolute;
+    width: 2px;
+    background: linear-gradient(180deg, transparent, rgba(150, 200, 255, 0.4), transparent);
+    animation: rain-fall linear infinite;
+    opacity: 0;
+  }
+
+  @keyframes rain-fall {
+    0% { transform: translateY(-100px); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(2000px); opacity: 0; }
+  }
+
+  .bokeh-light {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(40px);
+    opacity: 0;
+    animation: bokeh-pulse 4s ease infinite;
+  }
+
+  @keyframes bokeh-pulse {
+    0%, 100% { opacity: 0; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+
+  .rain-text-overlay {
+    position: absolute;
+    bottom: 350px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    z-index: 10;
+  }
+
+  .rain-text-overlay .text-line {
+    text-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+  }
+
+  /* ========== SCENE 4: NOTEBOOK ========== */
+  #scene4 {
+    background: radial-gradient(ellipse at 50% 50%, #1a1814 0%, #0f0d0a 50%, #080705 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .notebook {
+    width: 700px;
+    min-height: 900px;
+    background: linear-gradient(135deg, #f5f0e8 0%, #ebe5d8 50%, #e0d8c8 100%);
+    border-radius: 8px;
+    padding: 60px;
+    position: relative;
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.5),
+      0 0 100px rgba(0, 0, 0, 0.3);
+    transform: rotate(-2deg);
+  }
+
+  .notebook::before {
+    content: '';
+    position: absolute;
+    left: 80px;
+    top: 40px;
+    bottom: 40px;
+    width: 2px;
+    background: rgba(200, 80, 80, 0.2);
+  }
+
+  .handwriting {
+    font-family: 'ZCOOL XiaoWei', cursive;
+    font-size: 36px;
+    color: #2a2520;
+    line-height: 2;
+    padding-left: 20px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 1s ease;
+  }
+  .handwriting.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .handwriting .crossed {
+    text-decoration: line-through;
+    color: rgba(180, 60, 60, 0.5);
+  }
+
+  .star-drawing {
+    font-size: 48px;
+    opacity: 0;
+    transition: opacity 1.5s ease;
+  }
+  .star-drawing.visible { opacity: 0.7; }
+
+  /* ========== SCENE 5: FINAL ECHO ========== */
+  #scene5 {
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .final-text {
+    font-size: 44px;
+    color: rgba(255, 255, 255, 0);
+    line-height: 2.2;
+    letter-spacing: 6px;
+    text-align: center;
+    padding: 0 80px;
+    transition: all 2s ease;
+  }
+  .final-text.visible {
+    color: rgba(255, 255, 255, 0.85);
+  }
+  .final-text.dim {
+    font-size: 34px;
+    color: rgba(255, 255, 255, 0);
+    letter-spacing: 4px;
+  }
+  .final-text.dim.visible {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .cta-text {
+    position: absolute;
+    bottom: 200px;
+    font-size: 28px;
+    color: rgba(120, 160, 255, 0);
+    letter-spacing: 3px;
+    transition: color 2s ease;
+    animation: cta-pulse 3s ease infinite;
+  }
+  .cta-text.visible {
+    color: rgba(120, 160, 255, 0.7);
+  }
+
+  @keyframes cta-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  /* ========== FLOATING PARTICLES ========== */
+  .particles {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .particle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: rgba(150, 180, 255, 0.6);
+    border-radius: 50%;
+    animation: float-up linear infinite;
+  }
+
+  @keyframes float-up {
+    0% { transform: translateY(0) scale(1); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(-1920px) scale(0); opacity: 0; }
+  }
+
+  /* ========== PROGRESS BAR ========== */
+  .progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(100, 140, 255, 0.8), rgba(160, 120, 255, 0.6));
+    width: 0%;
+    z-index: 100;
+    transition: width 0.3s linear;
+  }
+
+  /* ========== WATERMARK ========== */
+  .watermark {
+    position: absolute;
+    top: 60px;
+    right: 50px;
+    font-size: 22px;
+    color: rgba(255, 255, 255, 0.15);
+    letter-spacing: 4px;
+    font-family: 'Noto Serif SC', serif;
+    z-index: 50;
+  }
+
+  /* ========== VIGNETTE ========== */
+  .vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
+    z-index: 2;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="viewport" id="viewport">
+  <div class="vignette"></div>
+  <div class="watermark">紫灵 VioletOath</div>
+  <div class="progress-bar" id="progressBar"></div>
+
+  <!-- SCENE 0: Opening -->
+  <div class="scene" id="scene0">
+    <div class="glow-text">输入法还记得你的名字</div>
+  </div>
+
+  <!-- SCENE 1: Phone Screen -->
+  <div class="scene" id="scene1">
+    <div class="phone-glow"></div>
+    <div class="phone-screen-content">
+      <div class="input-box">
+        <div class="cursor-blink"></div>
+      </div>
+      <div class="suggestion-list">
+        <div class="suggestion-item" id="sug1"><span class="name-blur">王小明</span></div>
+        <div class="suggestion-item" id="sug2">微信</div>
+        <div class="suggestion-item" id="sug3">晚安</div>
+        <div class="suggestion-item" id="sug4">未完成</div>
+      </div>
+    </div>
+    <div class="particles" id="particles1"></div>
+  </div>
+
+  <!-- SCENE 2: Hook Text -->
+  <div class="scene" id="scene2">
+    <div class="text-line" id="t1">我今天打了一个"W"</div>
+    <div class="text-line" id="t2" style="margin-top: 40px">联想词第一个</div>
+    <div class="text-line accent" id="t3" style="margin-top: 20px">还是你的名字</div>
+    <div class="particles" id="particles2"></div>
+  </div>
+
+  <!-- SCENE 3: Rain + Core Text -->
+  <div class="scene" id="scene3">
+    <div class="rain-container" id="rainContainer"></div>
+    <div class="bokeh-light" style="width: 200px; height: 200px; background: rgba(255, 160, 60, 0.15); top: 20%; left: 10%; animation-delay: 0s;"></div>
+    <div class="bokeh-light" style="width: 150px; height: 150px; background: rgba(60, 180, 255, 0.1); top: 40%; right: 15%; animation-delay: 1.5s;"></div>
+    <div class="bokeh-light" style="width: 180px; height: 180px; background: rgba(255, 100, 80, 0.08); bottom: 30%; left: 20%; animation-delay: 3s;"></div>
+    <div class="rain-text-overlay">
+      <div class="text-line" id="t4">手机记得你</div>
+      <div class="text-line small" id="t5" style="margin-top: 30px">可我早就不敢</div>
+      <div class="text-line small" id="t6" style="margin-top: 10px">点开那个对话框了</div>
+      <div style="height: 80px"></div>
+      <div class="text-line accent" id="t7" style="font-size: 48px">删掉一段感情最难的地方</div>
+      <div class="text-line small" id="t8" style="margin-top: 25px">不是删聊天记录</div>
+      <div class="text-line small" id="t9" style="margin-top: 10px">不是删照片</div>
+      <div class="text-line" id="t10" style="margin-top: 30px; font-size: 50px; color: rgba(160, 195, 255, 0)">是教会输入法忘记你</div>
+    </div>
+  </div>
+
+  <!-- SCENE 4: Notebook -->
+  <div class="scene" id="scene4">
+    <div class="notebook">
+      <div class="handwriting" id="hw1">后来我换了手机</div>
+      <div class="handwriting" id="hw2">新手机不认识你</div>
+      <div style="height: 60px"></div>
+      <div class="handwriting" id="hw3">好像这样</div>
+      <div class="handwriting" id="hw4">就算翻篇了</div>
+      <div style="height: 80px"></div>
+      <div class="handwriting crossed" id="hw5"><span class="crossed">可是 W 还是会想起你</span></div>
+      <div class="star-drawing" id="star">✦</div>
+    </div>
+  </div>
+
+  <!-- SCENE 5: Final -->
+  <div class="scene" id="scene5">
+    <div class="final-text" id="ft1">你手机输入法里</div>
+    <div class="final-text" id="ft2" style="margin-top: 20px">还存着谁的名字？</div>
+    <div style="height: 120px"></div>
+    <div class="final-text dim" id="ft3">打出来第一个字母</div>
+    <div class="final-text dim" id="ft4" style="margin-top: 10px">就能找到的那种</div>
+    <div class="cta-text" id="cta">在评论区 告诉我</div>
+  </div>
+</div>
+
+<script>
+  // Generate particles
+  function generateParticles(containerId, count = 30) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.top = Math.random() * 100 + '%';
+      p.style.width = (Math.random() * 3 + 1) + 'px';
+      p.style.height = p.style.width;
+      p.style.animationDuration = (Math.random() * 15 + 10) + 's';
+      p.style.animationDelay = (Math.random() * 10) + 's';
+      container.appendChild(p);
+    }
+  }
+
+  // Generate raindrops
+  function generateRain() {
+    const container = document.getElementById('rainContainer');
+    for (let i = 0; i < 60; i++) {
+      const drop = document.createElement('div');
+      drop.className = 'raindrop';
+      drop.style.left = Math.random() * 100 + '%';
+      drop.style.height = (Math.random() * 80 + 30) + 'px';
+      drop.style.animationDuration = (Math.random() * 2 + 1.5) + 's';
+      drop.style.animationDelay = (Math.random() * 5) + 's';
+      container.appendChild(drop);
+    }
+  }
+
+  // Scene management
+  function showScene(id) {
+    document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function showElement(id, delay = 0) {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('visible');
+    }, delay);
+  }
+
+  function highlightElement(id, delay = 0) {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add('visible');
+        el.classList.add('highlight');
+      }
+    }, delay);
+  }
+
+  // Timeline (30 seconds total at 30fps = 900 frames)
+  // Timing in milliseconds
+  const timeline = [
+    { time: 0,    action: () => { generateParticles('particles1', 25); generateParticles('particles2', 20); generateRain(); } },
+    { time: 300,  action: () => showScene('scene0') },
+
+    // Scene 1: Phone screen (0s - 5s)
+    { time: 1500, action: () => showScene('scene1') },
+    { time: 2500, action: () => showElement('sug1', 0) },
+    { time: 2800, action: () => { showElement('sug2', 0); showElement('sug3', 300); showElement('sug4', 600); } },
+    { time: 3500, action: () => highlightElement('sug1', 0) },
+
+    // Scene 2: Hook text (5s - 11s)
+    { time: 5000, action: () => showScene('scene2') },
+    { time: 5800, action: () => showElement('t1', 0) },
+    { time: 7200, action: () => showElement('t2', 0) },
+    { time: 8500, action: () => showElement('t3', 0) },
+
+    // Scene 3: Rain + Core (11s - 22s)
+    { time: 11000, action: () => showScene('scene3') },
+    { time: 12000, action: () => showElement('t4', 0) },
+    { time: 13200, action: () => showElement('t5', 0) },
+    { time: 13800, action: () => showElement('t6', 0) },
+    { time: 15200, action: () => showElement('t7', 0) },
+    { time: 16400, action: () => showElement('t8', 0) },
+    { time: 17000, action: () => showElement('t9', 0) },
+    { time: 18500, action: () => showElement('t10', 0) },
+
+    // Scene 4: Notebook (22s - 26s)
+    { time: 22000, action: () => showScene('scene4') },
+    { time: 22800, action: () => showElement('hw1', 0) },
+    { time: 23600, action: () => showElement('hw2', 0) },
+    { time: 24500, action: () => showElement('hw3', 0) },
+    { time: 25200, action: () => showElement('hw4', 0) },
+    { time: 25800, action: () => showElement('hw5', 0) },
+    { time: 26400, action: () => showElement('star', 0) },
+
+    // Scene 5: Final (26s - 30s)
+    { time: 27000, action: () => showScene('scene5') },
+    { time: 27800, action: () => showElement('ft1', 0) },
+    { time: 28500, action: () => showElement('ft2', 0) },
+    { time: 29500, action: () => { showElement('ft3', 0); showElement('ft4', 500); } },
+    { time: 30000, action: () => showElement('cta', 0) },
+  ];
+
+  // Progress bar update
+  function updateProgress() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min((elapsed / 33000) * 100, 100);
+    document.getElementById('progressBar').style.width = progress + '%';
+    if (progress < 100) requestAnimationFrame(updateProgress);
+  }
+
+  // Auto-play timeline
+  let startTime;
+  function startVideo() {
+    startTime = Date.now();
+    updateProgress();
+
+    timeline.forEach(item => {
+      setTimeout(item.action, item.time);
+    });
+  }
+
+  // Responsive scaling
+  function scaleViewport() {
+    const vp = document.getElementById('viewport');
+    const scaleX = window.innerWidth / 1080;
+    const scaleY = window.innerHeight / 1920;
+    const scale = Math.min(scaleX, scaleY);
+    vp.style.transform = `scale(${scale})`;
+    vp.style.transformOrigin = 'top left';
+    vp.style.position = 'absolute';
+    vp.style.left = (window.innerWidth - 1080 * scale) / 2 + 'px';
+    vp.style.top = (window.innerHeight - 1920 * scale) / 2 + 'px';
+  }
+
+  window.addEventListener('resize', scaleViewport);
+  scaleViewport();
+
+  // Start on load
+  window.addEventListener('load', () => {
+    setTimeout(startVideo, 500);
+  });
+</script>
+
+</body>
+</html>
